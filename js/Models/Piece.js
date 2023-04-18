@@ -41,9 +41,9 @@ export class Piece {
   /* 
     replaces the position of the mouved piece by the passed coordinates if these coordinates are in the Array of possible moves for this piece 
   */
-  move(coords, possibleMoves) {
+  move(coords, possibleMoves, game) {
     const pos = coords.split('');
-    if (possibleMoves.some(el => JSON.stringify(el) === JSON.stringify(pos.map(coord => parseInt(coord, 10))))) { 
+    if (possibleMoves.some(el => JSON.stringify(el) === JSON.stringify(pos.map(coord => parseInt(coord, 10))))) {
       this.setPosition(pos);
       this.#HTMLElement.classList.replace(this.#HTMLElement.classList[3], `square-${this.#position[0]}${this.#position[1]}`);
       if (this instanceof Pawn) {
@@ -55,7 +55,7 @@ export class Piece {
   /* 
   replaces the position of the mouved piece by the coordinates of the captured piece
   */
-  capture(pieceToRemove, pieces, possibleMoves) {
+  capture(pieceToRemove, pieces, possibleMoves, game) {
     const pos = pieceToRemove.getPosition();
     if (possibleMoves.some(el => JSON.stringify(el) === JSON.stringify(pos))) { //prevent a piece to capture itself
       console.log(JSON.stringify(pos));
@@ -65,14 +65,15 @@ export class Piece {
       this.#HTMLElement.classList.replace(this.#HTMLElement.classList[3], pieceToRemove.getHTMLElement().classList[3]);
       this.setPosition(pieceToRemove.getPosition());
 
-      const newPieces = pieces.filter(el => el !== pieceToRemove); // remove captured piece from the ingame pieces array
+      // const newPieces = pieces.filter(el => el !== pieceToRemove); 
       if (this instanceof Pawn) {
         this.setAlreadyMove();
       }
-      return newPieces;
+      game.setPieces(pieces.filter(el => el !== pieceToRemove));// remove captured piece from the ingame pieces array
+      // return newPieces;
 
     }
-    return pieces;
+    // return pieces;
   }
 
   /* 

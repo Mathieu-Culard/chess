@@ -13,9 +13,10 @@ initialize chessboard and pieces
 export class Game {
   #chessboard = document.getElementById('chess-board');
   #pieces = [];
+  #turn = 'white';
 
   constructor() {
-    this.#chessboard = document.getElementById('chess-board');
+    // this.#chessboard = document.getElementById('chess-board');
     this.initChessBoard();
     this.#pieces = this.initPieces();
     this.putPieces();
@@ -67,5 +68,12 @@ export class Game {
       piece.getHTMLElement().id === id
     )
     return p;
+  }
+
+  getTurn() {
+    return this.#turn;
+  }
+  setTurn() {
+    this.#turn = this.#turn === 'white' ? 'black' : 'white';
   }
 }
