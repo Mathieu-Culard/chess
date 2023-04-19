@@ -8,6 +8,7 @@ export class Piece {
   #color = '';
   #position = [];
   #HTMLElement;
+  #pinDirection = [];// represents the direction in which the piece can move if it is pinned to the king.
 
   constructor(id, name, position, color, game) {
     if (this.constructor === Piece) {
@@ -44,12 +45,17 @@ export class Piece {
   move(coords, possibleMoves, game) {
     const pos = coords.split('');
     if (possibleMoves.some(el => JSON.stringify(el) === JSON.stringify(pos.map(coord => parseInt(coord, 10))))) {
+      const prevPos = this.getPosition();
       this.setPosition(pos);
       this.#HTMLElement.classList.replace(this.#HTMLElement.classList[3], `square-${this.#position[0]}${this.#position[1]}`);
-      if (this instanceof Pawn) {
-        this.setAlreadyMove();
+      if (this instanceof Pawn && !this.getAlreadyMoved()) {
+        this.setAlreadyMoved();
       }
+      game.setMoves(this, 'move', prevPos);
+      return true;
+
     }
+    return false;
   }
 
   /* 
@@ -58,36 +64,47 @@ export class Piece {
   capture(pieceToRemove, pieces, possibleMoves, game) {
     const pos = pieceToRemove.getPosition();
     if (possibleMoves.some(el => JSON.stringify(el) === JSON.stringify(pos))) { //prevent a piece to capture itself
-      console.log(JSON.stringify(pos));
       //remove piece
       pieceToRemove.getHTMLElement().remove();
       //place piece
       this.#HTMLElement.classList.replace(this.#HTMLElement.classList[3], pieceToRemove.getHTMLElement().classList[3]);
+      const prevPos = this.getPosition();
       this.setPosition(pieceToRemove.getPosition());
-
-      // const newPieces = pieces.filter(el => el !== pieceToRemove); 
-      if (this instanceof Pawn) {
-        this.setAlreadyMove();
+      if (this instanceof Pawn && !this.getAlreadyMoved()) {
+        this.setAlreadyMoved();
       }
+      game.setMoves(this, 'capture', prevPos);
       game.setPieces(pieces.filter(el => el !== pieceToRemove));// remove captured piece from the ingame pieces array
-      // return newPieces;
-
+      return true;
     }
-    // return pieces;
+    return false;
+  }
+
+  containDirection(pieceDirections) {
+    const directions = [];
+    for (let i = 0; i < this.#pinDirection.length; i++) {
+      for (let j = 0; j < pieceDirections.length; j++) {
+        if (pieceDirections[j].x === this.#pinDirection[i].x && pieceDirections[j].y === this.#pinDirection[i].y) {
+          directions.push(this.#pinDirection[i]);
+        }
+      }
+    }
+    return directions;
   }
 
   /* 
   check if a square is occupied by a piece, return the piece if it the case, false otherwise
   */
   isOccupied(pieces, pos) {
-    // pieces.some((piece) => JSON.stringify(piece.getPosition()) === JSON.stringify(pos));
     const piece = pieces.find((piece) => JSON.stringify(piece.getPosition()) === JSON.stringify(pos));
     if (piece) {
       return piece;
     }
     return false;
   }
-
+  getName() {
+    return this.#name;
+  }
 
   getHTMLElement() {
     return this.#HTMLElement;
@@ -104,7 +121,15 @@ export class Piece {
   getColor() {
     return this.#color;
   }
-  // toJson() {
-  //   return JSON.stringify(this.#globalData);
-  // }
+  getId() {
+    return this.#id;
+  }
+  getPinDirection() {
+    return this.#pinDirection;
+  }
+  setPinDirection(pinDirection) {
+    this.#pinDirection = pinDirection;
+  }
+
+
 }

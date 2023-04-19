@@ -14,9 +14,9 @@ export class Game {
   #chessboard = document.getElementById('chess-board');
   #pieces = [];
   #turn = 'white';
+  #moves = [];
 
   constructor() {
-    // this.#chessboard = document.getElementById('chess-board');
     this.initChessBoard();
     this.#pieces = this.initPieces();
     this.putPieces();
@@ -76,4 +76,18 @@ export class Game {
   setTurn() {
     this.#turn = this.#turn === 'white' ? 'black' : 'white';
   }
+
+  setMoves(piece, type, prevPos) {
+    let mouvName;
+    const to = String.fromCharCode('a'.charCodeAt(0) + piece.getPosition()[0] - 1);
+    if (type === 'capture' && piece.getName() === 'pawn') {
+      const from = String.fromCharCode('a'.charCodeAt(0) + prevPos[0] - 1);
+      mouvName = `${from}x${to}${piece.getPosition()[1]}`;
+    } else {
+      const pieceName = piece.getName() === 'knight' ? piece.getName().slice(1, 2) : piece.getName().slice(0, 1); // make the difference between king and knight
+      mouvName = type === 'capture' ? `${pieceName.toUpperCase()}x${to}${piece.getPosition()[1]}` : `${pieceName === 'p' ? '' : pieceName.toUpperCase()}${to}${piece.getPosition()[1]}`;
+    }
+    this.#moves.push(mouvName);
+  }
+
 }

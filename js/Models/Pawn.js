@@ -26,67 +26,73 @@ export class Pawn extends Piece {
     return pawns;
   }
 
-/* 
-  generates an array of possible moves for the pawns
-  */
+  /* 
+    generates an array of possible moves for the pawns
+    */
   getMoves(pieces) {
     const moves = [];
     const position = this.getPosition();
-    const whiteMoves = [ // possible moves for each color
+    let posToCheck;
+    let piece;
+    const blackDirections = [
       {
-        type: 'move',
-        move: [position[0], position[1] + 1]
+        x: 0,
+        y: -1,
       },
       {
-        type: 'take',
-        move: [position[0] + 1, position[1] + 1]
+        x: 1,
+        y: -1,
       },
       {
-        type: 'take',
-        move: [position[0] - 1, position[1] + 1]
-      },
-      {
-        type: 'first-move',
-        move: [[position[0], position[1] + 1], [position[0], position[1] + 2]]
+        x: -1,
+        y: -1,
       }
     ];
-
-    const blackMoves = [
+    const whiteDirections = [
       {
-        type: 'move',
-        move: [position[0], position[1] - 1]
+        x: 0,
+        y: 1,
       },
       {
-        type: 'take',
-        move: [position[0] + 1, position[1] - 1]
+        x: 1,
+        y: 1,
       },
       {
-        type: 'take',
-        move: [position[0] - 1, position[1] - 1]
-      },
-      {
-        type: 'first-move',
-        move: [[position[0], position[1] - 1], [position[0], position[1] - 2]]
+        x: -1,
+        y: 1,
       }
     ];
-
-    const usedMoves = this.getColor() === 'white' ? whiteMoves : blackMoves;
-    for (let i = 0; i < usedMoves.length; i++) {  //check which moves among the possible moves arrays are valids
-      if (usedMoves[i].type === 'move' && !this.isOccupied(pieces, usedMoves[i].move)) {
-        moves.push(usedMoves[i].move);
-      } else if (usedMoves[i].type === 'take') {
-        const piece = this.isOccupied(pieces, usedMoves[i].move);
-        if (piece && piece.getColor() !== this.getColor()) {
-          moves.push(usedMoves[i].move);
+    let usedDirections = this.getColor() === 'white' ? whiteDirections : blackDirections;
+    if (Object.keys(this.getPinDirection()).length !== 0) {
+      usedDirections = this.containDirection(usedDirections, this.getPinDirection());
+    }
+    for (let i = 0; i < usedDirections.length; i++) {
+      posToCheck = [position[0] + 1 * usedDirections[i].x, position[1] + 1 * usedDirections[i].y];
+      if (posToCheck[0] > 0 && posToCheck[0] <= 8 && posToCheck[1] > 0 && posToCheck[1] <= 8) {
+        piece = this.isOccupied(pieces, posToCheck);
+        if (usedDirections[i].x === 0 && !piece) {
+          moves.push(posToCheck);
+          if (!this.getAlreadyMoved()) {
+            posToCheck = [position[0], position[1] + 2 * usedDirections[i].y];
+            piece = this.isOccupied(pieces, posToCheck);
+            if (!piece) {
+              moves.push(posToCheck);
+            }
+          }
+        } else if (usedDirections[i].x !== 0 && piece && piece.getColor() !== this.getColor()) {
+          moves.push(posToCheck);
         }
-      } else if (!this.#alreadyMoved && usedMoves[i].type === 'first-move' && !this.isOccupied(pieces, usedMoves[i].move[0]) && !this.isOccupied(pieces, usedMoves[i].move[1])) {
-        moves.push(usedMoves[i].move[1]);
       }
     }
     return moves;
   }
 
-  setAlreadyMove() {
+  getAlreadyMoved() {
+    return this.#alreadyMoved;
+  }
+
+  setAlreadyMoved() {
     this.#alreadyMoved = true;
   }
+
 }

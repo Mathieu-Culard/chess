@@ -72,8 +72,100 @@ export class King extends Piece {
         }
       }
     }
-    console.log(moves);
     return moves;
   }
 
+  setPinnedPieces(pieces) {
+    const position = this.getPosition();
+    let piece;
+    let posToCheck;
+    let j;
+    let breaked;
+    let protector;
+    const directions = [ // each object represent a direction, 1 is used to increment the positions, -1 to decrement it ans 0 to stay on the same line/column
+      { // rooks and queens
+        name: 'line right',
+        usedBy: ['rook', 'queen'],
+        x: 1,
+        y: 0,
+      },
+      {
+        name: 'line left',
+        usedBy: ['rook', 'queen'],
+        x: -1,
+        y: 0,
+      },
+      {
+        name: 'column up',
+        usedBy: ['rook', 'queen'],
+        x: 0,
+        y: 1,
+      },
+      {
+        name: 'column down',
+        usedBy: ['rook', 'queen'],
+        x: 0,
+        y: -1,
+      },
+      { // bishops queens and white pawn
+        name: 'diag up right',
+        usedBy: ['bishop', 'queen'],
+        x: 1,
+        y: 1,
+      },
+      {
+        name: 'diag up left',
+        usedBy: ['bishop', 'queen'],
+        x: -1,
+        y: 1,
+      },
+      { // bishops queens and black pawn
+        name: 'diag down right',
+        usedBy: ['bishop', 'queen'],
+        x: 1,
+        y: -1,
+      },
+      {
+        name: 'diag down left',
+        usedBy: ['bishop', 'queen'],
+        x: -1,
+        y: -1,
+      }
+    ];
+    for (let i = 0; i < directions.length; i++) { //for each direction
+      j = 1;
+      protector = '';
+      breaked = false;
+      while (position[0] + j * directions[i].x > 0 && position[0] + j * directions[i].x <= 8 && position[1] + j * directions[i].y > 0 && position[1] + j * directions[i].y <= 8) { //looks the next square ine that direction
+        posToCheck = [position[0] + j * directions[i].x, position[1] + j * directions[i].y];
+        piece = this.isOccupied(pieces, posToCheck);
+        if (piece && piece.getColor() !== this.getColor() && directions[i].usedBy.includes(piece.getName()) && protector) {
+          protector.setPinDirection([{
+            x: directions[i].x,
+            y: directions[i].y
+          },
+          {
+            x: directions[i].x * -1,
+            y: directions[i].y * -1
+          }]);
+          breaked = true;
+          break;
+        } else if (piece && (piece.getColor() === this.getColor() && protector || piece.getColor() !== this.getColor() && !directions[i].usedBy.includes(piece.getName()))) {
+          if (protector && Object.keys(protector.getPinDirection()).length !== 0) {
+            protector.setPinDirection([]);
+          }
+          if (piece.getColor() === this.getColor() && Object.keys(piece.getPinDirection()).length !== 0) {
+            piece.setPinDirection([]);
+          }
+          break;
+        } else if (piece && piece.getColor() === this.getColor() && !protector) {
+          protector = piece;
+        }
+        j++;
+      }
+      if (!breaked && protector && Object.keys(protector.getPinDirection()).length !== 0) {
+        protector.setPinDirection([]);
+      }
+    }
+  }
 }

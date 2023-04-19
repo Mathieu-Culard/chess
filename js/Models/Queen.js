@@ -30,7 +30,7 @@ export class Queen extends Piece {
     let j;
     let piece;
     let posToCheck;
-    const directions = [ // each object represent a direction, 1 is used to increment the positions, -1 to decrement it ans 0 to stay on the same line/column
+    let directions = [ // each object represent a direction, 1 is used to increment the positions, -1 to decrement it ans 0 to stay on the same line/column
       {
         x: 1,
         y: 0,
@@ -64,10 +64,13 @@ export class Queen extends Piece {
         y: -1,
       }
     ];
+    if (Object.keys(this.getPinDirection()).length !== 0) {
+      directions = this.containDirection(directions, this.getPinDirection());
+      directions.push({ x: directions[0].x * -1, y: directions[0].y * -1 });
+    }
     for (let i = 0; i < directions.length; i++) {
       j = 1;
       while (position[0] + j * directions[i].x > 0 && position[0] + j * directions[i].x <= 8 && position[1] + j * directions[i].y > 0 && position[1] + j * directions[i].y <= 8) {
-        console.log('yes');
         posToCheck = [position[0] + j * directions[i].x, position[1] + j * directions[i].y];
         piece = this.isOccupied(pieces, posToCheck);
         if ((piece && piece.getColor() !== this.getColor())) {
@@ -81,7 +84,6 @@ export class Queen extends Piece {
         j++;
       }
     }
-    console.log(moves);
     return moves;
   }
 

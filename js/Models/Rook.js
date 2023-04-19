@@ -13,7 +13,6 @@ export class Rook extends Piece {
   static initRooks(game) {
     const rooks = [];
     let color = 'white';
-    // let line = 1;
     for (let i = 0; i < 2; i++) {
       for (let j = 0; j < 2; j++) {
         const rook = new Rook(i * 2 + j, [j * 7 + 1, i * 7 + 1], color, game);
@@ -31,11 +30,11 @@ export class Rook extends Piece {
   getMoves(pieces) {
     const moves = [];
     const position = this.getPosition();
-    console.log(position);
+    // console.log(position);
     let j;
     let piece;
     let posToCheck;
-    const directions = [ // each object represent a direction, 1 is used to increment the position on the corresponding axis, -1 to decrement it and 0 to stay on the same line/column
+    let directions = [ // each object represent a direction, 1 is used to increment the position on the corresponding axis, -1 to decrement it and 0 to stay on the same line/column
       {
         x: 1,
         y: 0,
@@ -53,12 +52,14 @@ export class Rook extends Piece {
         y: -1,
       }
     ]
-
+    if (Object.keys(this.getPinDirection()).length !== 0) {
+      directions = this.containDirection(directions, this.getPinDirection());
+      directions.push({ x: directions[0].x * -1, y: directions[0].y * -1 });
+    }
     for (let i = 0; i < directions.length; i++) {
       j = 1
       while (position[0] + j * directions[i].x > 0 && position[0] + j * directions[i].x <= 8 && position[1] + j * directions[i].y > 0 && position[1] + j * directions[i].y <= 8) {
         posToCheck = [position[0] + j * directions[i].x, position[1] + j * directions[i].y];
-        console.log(posToCheck);
         piece = this.isOccupied(pieces, posToCheck);
         if ((piece && piece.getColor() !== this.getColor())) {
           moves.push(posToCheck);
