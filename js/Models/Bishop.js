@@ -1,4 +1,5 @@
 import { Piece } from './Piece.js';
+import { UP_LEFT, UP_RIGHT, DOWN_LEFT, DOWN_RIGHT } from '../Utils/directions.js';
 
 export class Bishop extends Piece {
 
@@ -24,40 +25,24 @@ export class Bishop extends Piece {
   /* 
   generates an array of possible moves for the bishops
   */
-  getMoves(pieces) {
+  getMoves(pieces,king) {
     const moves = [];
+    if (king.getCheckingPieces().length > 1) {
+      return moves;
+    }
     const position = this.getPosition();
     let i;
     let piece;
     let posToCheck;
-    let directions = [ // each object represent a direction, 1 is used to increment the positions and -1 to decrement it
-      {
-        x: 1,
-        y: 1,
-      },
-      {
-        x: 1,
-        y: -1,
-      },
-      {
-        x: -1,
-        y: 1,
-      },
-      {
-        x: -1,
-        y: -1,
-      }
-    ];
+    let directions = [UP_LEFT, UP_RIGHT, DOWN_LEFT, DOWN_RIGHT ];
     if (Object.keys(this.getPinDirection()).length !== 0) {
-      directions = this.containDirection(directions, this.getPinDirection());
-      directions.push({ x: directions[0].x * -1, y: directions[0].y * -1 });
+      directions = this.containDirection(directions);
     }
     for (let j = 0; j < directions.length; j++) { // for each direction
       i = 1;
       //if the next coordinates to check are contained in the chess board
       while (position[0] + i * directions[j].x > 0 && position[0] + i * directions[j].x <= 8 && position[1] + i * directions[j].y > 0 && position[1] + i * directions[j].y <= 8) {
         posToCheck = [position[0] + i * directions[j].x, position[1] + i * directions[j].y];
-        // console.log(posToCheck);
         piece = this.isOccupied(pieces, posToCheck);
         // push it to the possible moves array
         if ((piece && piece.getColor() !== this.getColor())) { 
@@ -70,6 +55,9 @@ export class Bishop extends Piece {
         }
         i++;
       }
+    }
+    if (king.getCheckingPieces().length === 1) {
+      return this.getPossibleMoves(moves,king.getBlockingSquares());
     }
     return moves;
   }

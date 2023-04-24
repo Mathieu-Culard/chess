@@ -1,4 +1,5 @@
 import { Piece } from './Piece.js';
+import { UP, DOWN, RIGHT, LEFT} from '../Utils/directions.js';
 
 export class Rook extends Piece {
   #alreadyMoved;
@@ -27,34 +28,18 @@ export class Rook extends Piece {
   /* 
   generates an array of possible moves for the rooks
   */
-  getMoves(pieces) {
+  getMoves(pieces,king) {
     const moves = [];
+    if (king.getCheckingPieces().length > 1) {
+      return moves;
+    }
     const position = this.getPosition();
-    // console.log(position);
     let j;
     let piece;
     let posToCheck;
-    let directions = [ // each object represent a direction, 1 is used to increment the position on the corresponding axis, -1 to decrement it and 0 to stay on the same line/column
-      {
-        x: 1,
-        y: 0,
-      },
-      {
-        x: -1,
-        y: 0,
-      },
-      {
-        x: 0,
-        y: 1,
-      },
-      {
-        x: 0,
-        y: -1,
-      }
-    ]
+    let directions = [UP, DOWN, RIGHT, LEFT]
     if (Object.keys(this.getPinDirection()).length !== 0) {
-      directions = this.containDirection(directions, this.getPinDirection());
-      directions.push({ x: directions[0].x * -1, y: directions[0].y * -1 });
+      directions = this.containDirection(directions);
     }
     for (let i = 0; i < directions.length; i++) {
       j = 1
@@ -71,6 +56,9 @@ export class Rook extends Piece {
         }
         j++;
       }
+    }
+    if (king.getCheckingPieces().length === 1) {
+      return this.getPossibleMoves(moves,king.getBlockingSquares());
     }
     return moves;
   }

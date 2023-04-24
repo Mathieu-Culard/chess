@@ -32,9 +32,10 @@ export class Piece {
     HTMLElement.setAttribute('draggable', true);
     HTMLElement.addEventListener('dragstart', (e) => dragstart(e));
     HTMLElement.addEventListener('dragover', (e) => dragover(e));
-    HTMLElement.addEventListener('drop', (e) => drop(e, game));                 // pass the game to the events in order to get the mouved pieces et fetch the game pieces array
+    HTMLElement.addEventListener('dragend', (e) => dragend(e));
+    HTMLElement.addEventListener('drop', (e) => drop(e, game));                 // pass the game to the events in order to get the mouved pieces and fetch the game pieces array
     HTMLElement.addEventListener('mousedown', (e) => mouseDown(e, this, game));
-    HTMLElement.addEventListener('mouseup', (e) => mouseUp(e));
+    HTMLElement.addEventListener('mouseup', (e) => dragend(e));
     return HTMLElement;
   }
 
@@ -90,6 +91,19 @@ export class Piece {
       }
     }
     return directions;
+  }
+
+  //if the king is in check compare the possible moves of a piece (moves) with the moves that allow the king to get out of check (possibleMoves) and return the moves that are available in both arguments
+  getPossibleMoves(moves, possibleMoves) {
+    const finalMoves = [];
+    for (let i = 0; i < possibleMoves.length; i++) {
+      for (let j = 0; j < moves.length; j++) {
+        if (possibleMoves[i][0] === moves[j][0] && possibleMoves[i][1] === moves[j][1]){
+          finalMoves.push(possibleMoves[i]);
+        }
+      }
+    }
+    return finalMoves;
   }
 
   /* 

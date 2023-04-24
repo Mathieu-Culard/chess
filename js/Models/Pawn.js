@@ -1,4 +1,5 @@
 import { Piece } from "./Piece.js";
+import { UP, DOWN, UP_LEFT, UP_RIGHT, DOWN_LEFT, DOWN_RIGHT } from '../Utils/directions.js';
 
 export class Pawn extends Piece {
   #alreadyMoved;
@@ -29,42 +30,19 @@ export class Pawn extends Piece {
   /* 
     generates an array of possible moves for the pawns
     */
-  getMoves(pieces) {
+  getMoves(pieces, king) {
     const moves = [];
+    if (king.getCheckingPieces().length > 1) {
+      return moves;
+    }
     const position = this.getPosition();
     let posToCheck;
     let piece;
-    const blackDirections = [
-      {
-        x: 0,
-        y: -1,
-      },
-      {
-        x: 1,
-        y: -1,
-      },
-      {
-        x: -1,
-        y: -1,
-      }
-    ];
-    const whiteDirections = [
-      {
-        x: 0,
-        y: 1,
-      },
-      {
-        x: 1,
-        y: 1,
-      },
-      {
-        x: -1,
-        y: 1,
-      }
-    ];
+    const blackDirections = [DOWN, DOWN_LEFT, DOWN_RIGHT];
+    const whiteDirections = [UP, UP_LEFT, UP_RIGHT];
     let usedDirections = this.getColor() === 'white' ? whiteDirections : blackDirections;
     if (Object.keys(this.getPinDirection()).length !== 0) {
-      usedDirections = this.containDirection(usedDirections, this.getPinDirection());
+      usedDirections = this.containDirection(usedDirections);
     }
     for (let i = 0; i < usedDirections.length; i++) {
       posToCheck = [position[0] + 1 * usedDirections[i].x, position[1] + 1 * usedDirections[i].y];
@@ -84,6 +62,10 @@ export class Pawn extends Piece {
         }
       }
     }
+    if (king.getCheckingPieces().length === 1) {
+      return this.getPossibleMoves(moves,king.getBlockingSquares());
+    }
+
     return moves;
   }
 

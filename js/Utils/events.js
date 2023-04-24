@@ -3,12 +3,12 @@ import { Game } from '../Models/Game.js';
 
 export const drop = (e, game) => {
   e.preventDefault();
-  // console.log(e);
   const id = e.dataTransfer.getData('text');
   let moved;
+  let king;
   const piece = game.getPiece(id); // gets the mouved piece instance by the id of its dom element
   let pieces = game.getPieces();
-  const moves = piece.getMoves(pieces); // gets an array of possible movement for this piece
+  const moves = piece.getMoves(pieces, game.getPiece(`king-${piece.getColor() === 'white' ? 0 : 1}`)); // gets an array of possible movement for this piece
   const targetEl = document.getElementById(e.target.id); // get the id of the arrival square
   if (piece.getColor() === game.getTurn()) {
     if (targetEl.classList.contains('piece')) { // if the arrival square contains a piece, check if the capture is valid and update the in game pieces array
@@ -24,12 +24,15 @@ export const drop = (e, game) => {
         pieces[i].setPinDirection([]);
       }
     }
+    game.getPiece(`king-${piece.getColor === 'white' ? 0 : 1}`).resetCheck();
     for (let i = 0; i < 2; i++) {
-      game.getPiece(`king-${i}`).setPinnedPieces(pieces);
+      king = game.getPiece(`king-${i}`);
+      king.setPinnedPieces(pieces);
+      king.isChecked(pieces);
     }
     game.setTurn();
   }
-  document.querySelectorAll('.highlight').forEach(el => el.classList.remove('highlight')); // remove highligh 
+  // document.querySelectorAll('.highlight').forEach(el => el.classList.remove('highlight')); // remove highligh 
 }
 
 export const dragover = (e) => {
@@ -42,6 +45,7 @@ export const dragstart = (e) => {
 
 export const dragend = (e) => {
   e.preventDefault();
+  document.querySelectorAll('.highlight').forEach(el => el.classList.remove('highlight')); // remove highligh 
 }
 
 /* 
@@ -49,7 +53,7 @@ highlighs the squares where a piece can move when it's clicked
 */
 export const mouseDown = (e, piece, game) => {
   if (e.which === 1 && piece.getColor() === game.getTurn()) {
-    const moves = piece.getMoves(game.getPieces());
+    const moves = piece.getMoves(game.getPieces(),game.getPiece(`king-${piece.getColor() === 'white' ? 0 : 1}`));
     const ids = moves.map(coords => coords.join(''));
     ids.forEach(id => document.getElementById(id).classList.add('highlight'));
   }
@@ -58,5 +62,5 @@ export const mouseDown = (e, piece, game) => {
 }
 
 export const mouseUp = (e) => {
-  document.querySelectorAll('.highlight').forEach(el => el.classList.remove('highlight'));
+  // document.querySelectorAll('.highlight').forEach(el => el.classList.remove('highlight'));
 }

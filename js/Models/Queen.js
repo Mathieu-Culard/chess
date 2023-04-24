@@ -1,4 +1,5 @@
 import { Piece } from './Piece.js';
+import { UP, DOWN, RIGHT, LEFT, UP_LEFT, UP_RIGHT, DOWN_LEFT, DOWN_RIGHT } from '../Utils/directions.js';
 
 export class Queen extends Piece {
 
@@ -21,52 +22,21 @@ export class Queen extends Piece {
     return Queens;
   }
 
-/* 
-  generates an array of possible moves for the queens
-  */
-  getMoves(pieces) {
+  /* 
+    generates an array of possible moves for the queens
+    */
+  getMoves(pieces,king) {
     const moves = [];
+    if (king.getCheckingPieces().length > 1) {
+      return moves;
+    }
     const position = this.getPosition();
     let j;
     let piece;
     let posToCheck;
-    let directions = [ // each object represent a direction, 1 is used to increment the positions, -1 to decrement it ans 0 to stay on the same line/column
-      {
-        x: 1,
-        y: 0,
-      },
-      {
-        x: -1,
-        y: 0,
-      },
-      {
-        x: 0,
-        y: 1,
-      },
-      {
-        x: 0,
-        y: -1,
-      },
-      {
-        x: 1,
-        y: 1,
-      },
-      {
-        x: 1,
-        y: -1,
-      },
-      {
-        x: -1,
-        y: 1,
-      },
-      {
-        x: -1,
-        y: -1,
-      }
-    ];
-    if (Object.keys(this.getPinDirection()).length !== 0) {
-      directions = this.containDirection(directions, this.getPinDirection());
-      directions.push({ x: directions[0].x * -1, y: directions[0].y * -1 });
+    let directions = [UP, DOWN, RIGHT, LEFT, UP_LEFT, UP_RIGHT, DOWN_LEFT, DOWN_RIGHT];
+    if (Object.keys(this.getPinDirection()).length !== 0) { //restrict the movement if it is pinned
+      directions = this.containDirection(directions);
     }
     for (let i = 0; i < directions.length; i++) {
       j = 1;
@@ -83,6 +53,9 @@ export class Queen extends Piece {
         }
         j++;
       }
+    }
+    if (king.getCheckingPieces().length === 1) {
+      return this.getPossibleMoves(moves,king.getBlockingSquares());
     }
     return moves;
   }
