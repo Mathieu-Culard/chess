@@ -4,7 +4,7 @@ import { UP, DOWN, RIGHT, LEFT, UP_LEFT, UP_RIGHT, DOWN_LEFT, DOWN_RIGHT } from 
 export class Queen extends Piece {
 
   constructor(id, position, color, game) {
-    super(id, 'queen', position, color, game);
+    super(id, 'queen', position, color, game, [UP, DOWN, RIGHT, LEFT, UP_LEFT, UP_RIGHT, DOWN_LEFT, DOWN_RIGHT]);
   }
 
 
@@ -25,39 +25,46 @@ export class Queen extends Piece {
   /* 
     generates an array of possible moves for the queens
     */
-  getMoves(pieces,king) {
+  calculateMoves(pieces, king, ennemyKing) {
     const moves = [];
-    if (king.getCheckingPieces().length > 1) {
-      return moves;
+    if (king.checkingPieces.length > 1) {
+      this.moves = moves;
+      return;
     }
-    const position = this.getPosition();
-    let j;
+    const position = this.position;
+    const directions = Object.keys(this.pinDirection).length === 0 ? this.directions : this.adaptDirections();
+    let i;
     let piece;
     let posToCheck;
-    let directions = [UP, DOWN, RIGHT, LEFT, UP_LEFT, UP_RIGHT, DOWN_LEFT, DOWN_RIGHT];
-    if (Object.keys(this.getPinDirection()).length !== 0) { //restrict the movement if it is pinned
-      directions = this.containDirection(directions);
-    }
-    for (let i = 0; i < directions.length; i++) {
-      j = 1;
-      while (position[0] + j * directions[i].x > 0 && position[0] + j * directions[i].x <= 8 && position[1] + j * directions[i].y > 0 && position[1] + j * directions[i].y <= 8) {
-        posToCheck = [position[0] + j * directions[i].x, position[1] + j * directions[i].y];
+    for (const direction of directions) {
+      i = 1;
+      posToCheck = [position[0] + i * direction.x, position[1] + i * direction.y];
+      while (this.isInBoard(posToCheck)) {
+        posToCheck = [position[0] + i * direction.x, position[1] + i * direction.y];
         piece = this.isOccupied(pieces, posToCheck);
-        if ((piece && piece.getColor() !== this.getColor())) {
-          moves.push(posToCheck);
-          break;
-        } else if (!piece) {
-          moves.push(posToCheck);
-        } else {
+        if ((piece && piece.color === this.color)) {
           break;
         }
-        j++;
+
+        if ((piece && piece.color !== this.color)) {
+          if (piece.name === 'king') {
+            ennemyKing.check(direction, pieces, this);
+          } else {
+            if (this.isMoveValid(king, posToCheck)) {
+              moves.push(posToCheck);
+            }
+            piece.checkPin(direction, pieces);
+          }
+          break;
+        }
+
+        if (this.isMoveValid(king, posToCheck)) {
+          moves.push(posToCheck);
+        }
+        i++;
+        posToCheck = [position[0] + i * direction.x, position[1] + i * direction.y];
       }
     }
-    if (king.getCheckingPieces().length === 1) {
-      return this.getPossibleMoves(moves,king.getBlockingSquares());
-    }
-    return moves;
+    this.moves = moves;
   }
-
 }

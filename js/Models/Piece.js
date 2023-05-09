@@ -1,5 +1,23 @@
-import { dragend, dragover, dragstart, drop, mouseDown, mouseUp } from "../Utils/events.js";
+import { dragend, dragover, dragstart, drop, mouseDown } from "../Utils/events.js";
 import { Pawn } from "./Pawn.js";
+import {
+  UP,
+  DOWN,
+  RIGHT,
+  LEFT,
+  UP_LEFT,
+  UP_RIGHT,
+  DOWN_LEFT,
+  DOWN_RIGHT,
+  KNIGHT_UP_LEFT,
+  KNIGHT_UP_RIGHT,
+  KNIGHT_DOWN_LEFT,
+  KNIGHT_DOWN_RIGHT,
+  KNIGHT_RIGHT_UP,
+  KNIGHT_RIGHT_DOWN,
+  KNIGHT_LEFT_UP,
+  KNIGHT_LEFT_DOWN
+} from '../Utils/directions.js';
 
 /* Abstract class used to extend all pieces classes */
 export class Piece {
@@ -7,14 +25,17 @@ export class Piece {
   #name = '';
   #color = '';
   #position = [];
+  #moves = [];
+  #directions = [];
   #HTMLElement;
-  #pinDirection = [];// represents the direction in which the piece can move if it is pinned to the king.
+  #pinDirection = {};// represents the direction in which the piece can move if it is pinned to the king.
 
-  constructor(id, name, position, color, game) {
+  constructor(id, name, position, color, game, directions) {
     if (this.constructor === Piece) {
       throw new TypeError('Abstract class "Piece" cannot be instantiated directly')
     }
-    this.#id = `${name}-${id}`
+    this.#directions = directions;
+    this.#id = `${name}-${id}`;
     this.#name = name;
     this.#position = position;
     this.#color = color;
@@ -43,107 +64,207 @@ export class Piece {
   /* 
     replaces the position of the mouved piece by the passed coordinates if these coordinates are in the Array of possible moves for this piece 
   */
-  move(coords, possibleMoves, game) {
+  move(coords, possibleMoves) {
     const pos = coords.split('');
-    if (possibleMoves.some(el => JSON.stringify(el) === JSON.stringify(pos.map(coord => parseInt(coord, 10))))) {
-      const prevPos = this.getPosition();
-      this.setPosition(pos);
-      this.#HTMLElement.classList.replace(this.#HTMLElement.classList[3], `square-${this.#position[0]}${this.#position[1]}`);
-      if (this instanceof Pawn && !this.getAlreadyMoved()) {
-        this.setAlreadyMoved();
-      }
-      game.setMoves(this, 'move', prevPos);
-      return true;
-
+    if (!possibleMoves.some(el => JSON.stringify(el) === JSON.stringify(pos.map(coord => parseInt(coord, 10))))) {
+      return false;
     }
-    return false;
+
+    const prevPos = this.position;
+    this.position = pos;
+    this.#HTMLElement.classList.replace(this.HTMLElement.classList[3], `square-${this.position[0]}${this.position[1]}`);
+    if (this instanceof Pawn && !this.alreadyMoved) {
+      this.alreadyMoved = true;
+    }
+    return true;
+
   }
 
   /* 
   replaces the position of the mouved piece by the coordinates of the captured piece
   */
-  capture(pieceToRemove, pieces, possibleMoves, game) {
-    const pos = pieceToRemove.getPosition();
-    if (possibleMoves.some(el => JSON.stringify(el) === JSON.stringify(pos))) { //prevent a piece to capture itself
-      //remove piece
-      pieceToRemove.getHTMLElement().remove();
-      //place piece
-      this.#HTMLElement.classList.replace(this.#HTMLElement.classList[3], pieceToRemove.getHTMLElement().classList[3]);
-      const prevPos = this.getPosition();
-      this.setPosition(pieceToRemove.getPosition());
-      if (this instanceof Pawn && !this.getAlreadyMoved()) {
-        this.setAlreadyMoved();
-      }
-      game.setMoves(this, 'capture', prevPos);
-      game.setPieces(pieces.filter(el => el !== pieceToRemove));// remove captured piece from the ingame pieces array
-      return true;
+  capture(pieceToRemove, possibleMoves, game) {
+    const pos = pieceToRemove.position;
+    if (!possibleMoves.some(el => JSON.stringify(el) === JSON.stringify(pos))) { //prevent a piece to capture itself
+      return false;
     }
-    return false;
-  }
-
-  containDirection(pieceDirections) {
-    const directions = [];
-    for (let i = 0; i < this.#pinDirection.length; i++) {
-      for (let j = 0; j < pieceDirections.length; j++) {
-        if (pieceDirections[j].x === this.#pinDirection[i].x && pieceDirections[j].y === this.#pinDirection[i].y) {
-          directions.push(this.#pinDirection[i]);
-        }
-      }
+    //remove piece
+    pieceToRemove.HTMLElement.remove()
+    //place piece
+    this.#HTMLElement.classList.replace(this.#HTMLElement.classList[3], pieceToRemove.HTMLElement.classList[3]);
+    const prevPos = this.position;
+    this.setPosition(pos);
+    if (this instanceof Pawn && !this.alreadyMoved) {
+      this.alreadyMoved = true;
     }
-    return directions;
-  }
-
-  //if the king is in check compare the possible moves of a piece (moves) with the moves that allow the king to get out of check (possibleMoves) and return the moves that are available in both arguments
-  getPossibleMoves(moves, possibleMoves) {
-    const finalMoves = [];
-    for (let i = 0; i < possibleMoves.length; i++) {
-      for (let j = 0; j < moves.length; j++) {
-        if (possibleMoves[i][0] === moves[j][0] && possibleMoves[i][1] === moves[j][1]){
-          finalMoves.push(possibleMoves[i]);
-        }
-      }
-    }
-    return finalMoves;
+    game.pieces = game.pieces.filter(el => el !== pieceToRemove);// remove captured piece from the ingame pieces array
+    return true;
   }
 
   /* 
   check if a square is occupied by a piece, return the piece if it the case, false otherwise
   */
   isOccupied(pieces, pos) {
-    const piece = pieces.find((piece) => JSON.stringify(piece.getPosition()) === JSON.stringify(pos));
+    const piece = pieces.find((piece) => JSON.stringify(piece.position) === JSON.stringify(pos));
     if (piece) {
       return piece;
     }
     return false;
   }
-  getName() {
+
+  checkPin(direction, pieces) {
+    const position = this.position;
+    let i = 1;
+    let posToCheck = [position[0] + i * direction.x, position[1] + i * direction.y];
+    let piece;
+    while (this.isInBoard(posToCheck)) {
+      piece = this.isOccupied(pieces, posToCheck);
+      if (piece && (piece.name !== 'king' || piece.name === 'king' && piece.color !== this.color)) {
+        return false;
+        break;
+      }
+
+      if (piece && piece.color === this.color && piece.name === 'king') {
+        this.pinDirection = direction;
+        return true;
+        break;
+      }
+      i++;
+      posToCheck = [position[0] + i * direction.x, position[1] + i * direction.y];
+    }
+    return false;
+  }
+
+  getInteractingPieces(pieces, position) {
+    const directions = [
+      UP,
+      DOWN,
+      RIGHT,
+      LEFT,
+      UP_LEFT,
+      UP_RIGHT,
+      DOWN_LEFT,
+      DOWN_RIGHT,
+    ];
+    let i;
+    let piece;
+    let posToCheck;
+    let piecesToUpdate = new Set();
+    piecesToUpdate.add(this);
+    const positions = [position, this.position];
+    for (const [posIndex, pos] of positions.entries()) {
+      for (const direction of directions) {
+        i = 1;
+        posToCheck = [pos[0] + i * direction.x, pos[1] + i * direction.y];
+        while (this.isInBoard(posToCheck)) {
+          piece = this.isOccupied(pieces, posToCheck);
+
+          if (piece && piece.color === this.color) {
+            if (piece.hasDirection(direction) && (piece.name === 'rook' || piece.name === 'bishop' || piece.name === 'queen')) {
+              piecesToUpdate.add(piece);
+            }
+            if (Object.keys(piece.pinDirection).length !== 0 && Math.abs(piece.pinDirection.x) === Math.abs(direction.x) && Math.abs(piece.pinDirection.x) === Math.abs(direction.x)) {
+              piece.unpin();
+            }
+            break;
+          }
+          if (piece && piece.color !== this.color) {
+            if (Object.keys(piece.pinDirection).length !== 0 && piece.pinDirection.x === direction.x && piece.pinDirection.y === direction.y && (!this.hasDirection(direction) || posIndex === 0)) {
+              piece.unpin();
+            }
+            break;
+          }
+          i++;
+          posToCheck = [pos[0] + i * direction.x, pos[1] + i * direction.y];
+        }
+      }
+    }
+    return piecesToUpdate;
+  }
+
+  isMoveValid(king, position) {
+    const blockingSquares = king.blockingSquares;
+    if (blockingSquares.length === 0) {
+      return true;
+    }
+    for (const square of blockingSquares) {
+      if (square[0] === position[0] && square[1] === position[1]) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  hasDirection(direction) {
+    for (const pieceDirection of this.directions) {
+      if (direction.x === pieceDirection.x && direction.y === pieceDirection.y) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  isInBoard(posToCheck) {
+    return posToCheck[0] > 0 && posToCheck[0] <= 8 && posToCheck[1] > 0 && posToCheck[1] <= 8;
+  }
+
+  adaptDirections() {
+    const adaptedDirections = [];
+    const pinDirection = this.pinDirection;
+    for (const direction of this.directions) {
+      if (pinDirection.x === direction.x && pinDirection.y === direction.y || pinDirection.x * -1 === direction.x && pinDirection.y * -1 === direction.y) {
+        adaptedDirections.push(direction);
+      }
+    }
+    return adaptedDirections
+  }
+
+  set moves(moves) {
+    this.#moves = moves;
+  }
+
+  get moves() {
+    return this.#moves;
+  }
+
+  set position(newPos) {
+    this.#position = newPos.map(coord => parseInt(coord, 10));
+  }
+
+  get position() {
+    return this.#position;
+  }
+
+  get directions() {
+    return this.#directions;
+  }
+
+  get name() {
     return this.#name;
   }
 
-  getHTMLElement() {
+  get HTMLElement() {
     return this.#HTMLElement;
-  }
-
-  getPosition() {
-    return this.#position;
   }
 
   setPosition(newPos) {
     this.#position = newPos.map(coord => parseInt(coord, 10));
   }
 
-  getColor() {
+  get color() {
     return this.#color;
   }
-  getId() {
+  get id() {
     return this.#id;
   }
-  getPinDirection() {
+  get pinDirection() {
     return this.#pinDirection;
   }
-  setPinDirection(pinDirection) {
-    this.#pinDirection = pinDirection;
+  set pinDirection(direction) {
+    this.#pinDirection = direction;
   }
 
-
+  unpin() {
+    this.#pinDirection = {};
+  }
 }

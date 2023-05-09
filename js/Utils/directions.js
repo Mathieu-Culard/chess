@@ -38,3 +38,43 @@ export const DOWN_LEFT = {
   x: -1,
   y: -1
 };
+
+export const KNIGHT_UP_LEFT = {
+  x: -1,
+  y: 2
+};
+
+export const KNIGHT_UP_RIGHT = {
+  x: 1,
+  y: 2
+};
+
+export const KNIGHT_DOWN_LEFT = {
+  x: -1,
+  y: -2
+};
+
+export const KNIGHT_DOWN_RIGHT = {
+  x: 1,
+  y: -2
+};
+
+export const KNIGHT_RIGHT_UP = {
+  x: 2,
+  y: 1
+};
+
+export const KNIGHT_RIGHT_DOWN = {
+  x: 2,
+  y: -1
+};
+
+export const KNIGHT_LEFT_UP = {
+  x: -2,
+  y: 1
+};
+
+export const KNIGHT_LEFT_DOWN = {
+  x: -2,
+  y:-1
+};

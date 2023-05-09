@@ -4,7 +4,7 @@ import { UP_LEFT, UP_RIGHT, DOWN_LEFT, DOWN_RIGHT } from '../Utils/directions.js
 export class Bishop extends Piece {
 
   constructor(id, position, color, game) {
-    super(id, 'bishop', position, color, game);
+    super(id, 'bishop', position, color, game, [UP_LEFT, UP_RIGHT, DOWN_LEFT, DOWN_RIGHT]);
   }
   /* 
     create all the bishops of the game.
@@ -25,41 +25,45 @@ export class Bishop extends Piece {
   /* 
   generates an array of possible moves for the bishops
   */
-  getMoves(pieces,king) {
+  calculateMoves(pieces, king, ennemyKing) {
     const moves = [];
-    if (king.getCheckingPieces().length > 1) {
-      return moves;
+    if (king.checkingPieces.length > 1) {
+      this.moves = moves;
+      return;
     }
-    const position = this.getPosition();
+    const position = this.position;
+    const directions = Object.keys(this.pinDirection).length === 0 ? this.directions : this.adaptDirections();
     let i;
     let piece;
     let posToCheck;
-    let directions = [UP_LEFT, UP_RIGHT, DOWN_LEFT, DOWN_RIGHT ];
-    if (Object.keys(this.getPinDirection()).length !== 0) {
-      directions = this.containDirection(directions);
-    }
-    for (let j = 0; j < directions.length; j++) { // for each direction
+    for (const direction of directions) { // for each direction
       i = 1;
+      posToCheck = [position[0] + i * direction.x, position[1] + i * direction.y];
       //if the next coordinates to check are contained in the chess board
-      while (position[0] + i * directions[j].x > 0 && position[0] + i * directions[j].x <= 8 && position[1] + i * directions[j].y > 0 && position[1] + i * directions[j].y <= 8) {
-        posToCheck = [position[0] + i * directions[j].x, position[1] + i * directions[j].y];
+      while (this.isInBoard(posToCheck)) {
+        posToCheck = [position[0] + i * direction.x, position[1] + i * direction.y];
         piece = this.isOccupied(pieces, posToCheck);
-        // push it to the possible moves array
-        if ((piece && piece.getColor() !== this.getColor())) { 
-          moves.push(posToCheck);
-          break;      // if its a piece to capture don't check futher
-        } else if (!piece) {
-          moves.push(posToCheck);
-        } else { // if it's piece of the same color
+        if (piece && piece.color === this.color) {
           break;
         }
+        if ((piece && piece.color !== this.color)) {
+          if (piece.name === 'king') {
+            ennemyKing.check(direction, pieces, this);
+          } else {
+            if (this.isMoveValid(king, posToCheck)) {
+              moves.push(posToCheck);
+            }
+            piece.checkPin(direction, pieces);
+          }
+          break;      // if its a piece to capture don't check futher
+        }
+        if (this.isMoveValid(king, posToCheck)) {
+          moves.push(posToCheck);
+        }
         i++;
+        posToCheck = [position[0] + i * direction.x, position[1] + i * direction.y];
       }
     }
-    if (king.getCheckingPieces().length === 1) {
-      return this.getPossibleMoves(moves,king.getBlockingSquares());
-    }
-    return moves;
+    this.moves = moves;
   }
-
 }

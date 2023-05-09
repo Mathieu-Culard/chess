@@ -15,6 +15,8 @@ export class Game {
   #pieces = [];
   #turn = 'white';
   #moves = [];
+  #whiteKing;
+  #blackKing;
 
   constructor() {
     this.initChessBoard();
@@ -43,37 +45,68 @@ export class Game {
 
   initPieces() {
     const pieces = [...Pawn.initPawns(this), ...Rook.initRooks(this), ...Bishop.initBishops(this), ...Knight.initKnights(this), ...Queen.initQueens(this), ...King.initKings(this)];
+    pieces.forEach(piece => piece.calculateMoves(pieces, piece.color === 'white' ? this.getKing('white') : this.getKing('black'), piece.color === 'white' ? this.getKing('black') : this.getKing('white')));
     return pieces;
   }
 
   putPieces() {
     for (let i = 0; i < this.#pieces.length; i++) {
-      this.#chessboard.append(this.#pieces[i].getHTMLElement());
+      this.#chessboard.append(this.#pieces[i].HTMLElement);
     }
   }
 
-  getChessBoard() {
+  play(pieceId, squareId) {
+    const targetSquare = document.getElementById(squareId); // get the id of the arrival square
+    const piece = this.getPiece(pieceId); // gets the mouved piece instance by the id of its dom element
+    const king = this.getKing(piece.color);
+    const ennemyKing = this.getKing(piece.color === 'white' ? 'black' : 'white');
+    const moves = piece.moves; // gets an array of possible movement for this piece
+    let moved;
+    let prevPos = piece.position;
+    if (piece.color === this.turn) {
+      if (targetSquare.classList.contains('piece')) { // if the arrival square contains a piece, check if the capture is valid and update the in game pieces array
+        moved = piece.capture(this.getPiece(squareId), moves, this);
+      } else {
+        moved = piece.move(squareId, moves);
+      }
+    }
+    if (moved) {
+      const piecesToUpdate = piece.getInteractingPieces(this.pieces, prevPos);
+      piecesToUpdate.forEach(piece => piece.calculateMoves(this.pieces, king, ennemyKing));
+      this.changeTurn();
+      king.resetCheck();
+      this.getPiecesByColor(this.turn).forEach(piece => piece.calculateMoves(this.pieces, ennemyKing, king));
+      console.log('--------------------------------TURN-----------------------------------');
+    }
+  }
+
+  get chessBoard() {
     return this.#chessboard;
   }
 
-  getPieces() {
+  get pieces() {
     return this.#pieces;
   }
-  setPieces(pieces) {
+
+  set pieces(pieces) {
     this.#pieces = pieces;
   }
 
   getPiece(id) {
     let p = this.#pieces.find(piece =>
-      piece.getHTMLElement().id === id
+      piece.HTMLElement.id === id
     )
     return p;
   }
 
-  getTurn() {
+  getPiecesByColor(color) {
+    return this.#pieces.filter(piece => piece.color === color);
+  }
+
+  get turn() {
     return this.#turn;
   }
-  setTurn() {
+  changeTurn() {
     this.#turn = this.#turn === 'white' ? 'black' : 'white';
   }
 
@@ -88,6 +121,18 @@ export class Game {
       mouvName = type === 'capture' ? `${pieceName.toUpperCase()}x${to}${piece.getPosition()[1]}` : `${pieceName === 'p' ? '' : pieceName.toUpperCase()}${to}${piece.getPosition()[1]}`;
     }
     this.#moves.push(mouvName);
+  }
+
+  setKings(kings) {
+    this.#whiteKing = kings[0];
+    this.#blackKing = kings[1];
+  }
+
+  getKing(color) {
+    if (color === 'white') {
+      return this.#whiteKing;
+    }
+    return this.#blackKing;
   }
 
 }
