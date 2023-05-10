@@ -48,7 +48,7 @@ export class King extends Piece {
   generates an array of possible moves for the kings
   */
   calculateMoves(pieces) {
-    const moves = [];
+    let moves = [];
     const position = this.position;
     const directions = this.directions;
     let piece;
@@ -60,7 +60,42 @@ export class King extends Piece {
         moves.push(posToCheck);
       }
     }
+    moves = this.addCastling(moves, pieces, position);
     this.moves = moves;
+  }
+
+  addCastling(moves, pieces, position) {
+    const rooks = pieces.filter(p => p.name === 'rook' && p.color === this.color);
+    if (this.alreadyMoved || rooks[0].alreadyMoved && rooks[1].alreadyMoved || this.isChecked) {
+      return moves;
+    }
+    let castling;
+    let posToCheck;
+    let i;
+    let piece;
+    const directions = [LEFT, RIGHT];
+    for (const [idx, direction] of directions.entries()) {
+      if (!rooks[idx].alreadyMoved) {
+
+        i = 1;
+        posToCheck = [position[0] + i * direction.x, position[1]];
+        piece = this.isOccupied(pieces, posToCheck);
+        castling = false;
+        while ((!piece || piece.id === rooks[idx].id) && (!this.isCheck(posToCheck, pieces) || i > 2)) { 
+          if (piece) { // if it reach the rook castle is possible
+            castling = true;
+            break;
+          }
+          i++;
+          posToCheck = [position[0] + i * direction.x, position[1]];
+          piece = this.isOccupied(pieces, posToCheck);
+        }
+        if (castling) {
+          moves.push([position[0] + 2 * direction.x, position[1]]);
+        }
+      }
+    }
+    return moves;
   }
 
   isCheck(position, pieces) {

@@ -1,5 +1,4 @@
 import { dragend, dragover, dragstart, drop, mouseDown } from "../Utils/events.js";
-import { Pawn } from "./Pawn.js";
 import {
   UP,
   DOWN,
@@ -18,6 +17,7 @@ import {
   KNIGHT_LEFT_UP,
   KNIGHT_LEFT_DOWN
 } from '../Utils/directions.js';
+
 
 /* Abstract class used to extend all pieces classes */
 export class Piece {
@@ -73,7 +73,7 @@ export class Piece {
     const prevPos = this.position;
     this.position = pos;
     this.#HTMLElement.classList.replace(this.HTMLElement.classList[3], `square-${this.position[0]}${this.position[1]}`);
-    if (this instanceof Pawn && !this.alreadyMoved) {
+    if ((this.name === 'pawn' || this.name === 'king' || this.name === 'rook') && !this.alreadyMoved) {
       this.alreadyMoved = true;
     }
     return true;
@@ -94,7 +94,7 @@ export class Piece {
     this.#HTMLElement.classList.replace(this.#HTMLElement.classList[3], pieceToRemove.HTMLElement.classList[3]);
     const prevPos = this.position;
     this.setPosition(pos);
-    if (this instanceof Pawn && !this.alreadyMoved) {
+    if ((this.name === 'pawn' || this.name === 'king' || this.name === 'rook') && !this.alreadyMoved) {
       this.alreadyMoved = true;
     }
     game.pieces = game.pieces.filter(el => el !== pieceToRemove);// remove captured piece from the ingame pieces array
@@ -163,7 +163,7 @@ export class Piece {
             if (piece.hasDirection(direction) && (piece.name === 'rook' || piece.name === 'bishop' || piece.name === 'queen')) {
               piecesToUpdate.add(piece);
             }
-            if (Object.keys(piece.pinDirection).length !== 0 && Math.abs(piece.pinDirection.x) === Math.abs(direction.x) && Math.abs(piece.pinDirection.x) === Math.abs(direction.x)) {
+            if (Object.keys(piece.pinDirection).length !== 0 && Math.abs(piece.pinDirection.x) === Math.abs(direction.x) && Math.abs(piece.pinDirection.y) === Math.abs(direction.y)) {
               piece.unpin();
             }
             break;
@@ -267,4 +267,5 @@ export class Piece {
   unpin() {
     this.#pinDirection = {};
   }
+
 }

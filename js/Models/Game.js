@@ -64,7 +64,12 @@ export class Game {
     let moved;
     let prevPos = piece.position;
     if (piece.color === this.turn) {
-      if (targetSquare.classList.contains('piece')) { // if the arrival square contains a piece, check if the capture is valid and update the in game pieces array
+      if (pieceId === king.id && Math.abs(piece.position[0] - squareId.slice(0, 1)) === 2) {
+        moved = piece.move(squareId, moves);
+        if (moved) {
+          this.handleCastling(king, ennemyKing);
+        }
+      } else if (targetSquare.classList.contains('piece')) { // if the arrival square contains a piece, check if the capture is valid and update the in game pieces array
         moved = piece.capture(this.getPiece(squareId), moves, this);
       } else {
         moved = piece.move(squareId, moves);
@@ -78,6 +83,23 @@ export class Game {
       this.getPiecesByColor(this.turn).forEach(piece => piece.calculateMoves(this.pieces, ennemyKing, king));
       console.log('--------------------------------TURN-----------------------------------');
     }
+  }
+
+  handleCastling(king, ennemyKing) {
+    let rookId;
+    let targetSquare;
+    if (king.color === 'white') {
+      rookId = king.position[0] === 7 ? 1 : 0;
+      targetSquare = rookId === 1 ? '61' : '41';
+    } else {
+      rookId = king.position[0] === 7 ? 3 : 2;
+      targetSquare = rookId === 3 ? '68' : '48';
+    }
+    const rook = this.getPiece(`rook-${rookId}`);
+    const position = rook.position;
+    const oui = rook.move(targetSquare, rook.moves);
+    const piecesToUpdate = rook.getInteractingPieces(this.pieces, position);
+    piecesToUpdate.forEach(piece => piece.calculateMoves(this.pieces, king, ennemyKing));
   }
 
   get chessBoard() {

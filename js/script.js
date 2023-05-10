@@ -5,7 +5,7 @@ let app = {
 
   init: () => {
     const game = new Game();
-    window.addEventListener('resize',()=>resize(game.getChessBoard()));
+    window.addEventListener('resize',()=>resize(game.chessBoard));
     resize(game.chessBoard);
   },
 
