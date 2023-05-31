@@ -49,24 +49,23 @@ export class King extends Piece {
   */
   calculateMoves(pieces) {
     let moves = [];
-    const position = this.position;
-    const directions = this.directions;
     let piece;
     let posToCheck;
-    for (const direction of directions) {
-      posToCheck = [position[0] + 1 * direction.x, position[1] + 1 * direction.y];
+    for (const direction of this.directions) {
+      posToCheck = [this.position[0] + 1 * direction.x, this.position[1] + 1 * direction.y];
       piece = this.isOccupied(pieces, posToCheck);
       if (this.isInBoard(posToCheck) && (!piece || piece && piece.color !== this.color) && !this.isCheck(posToCheck, pieces)) {
         moves.push(posToCheck);
       }
     }
-    moves = this.addCastling(moves, pieces, position);
+    moves = this.addCastling(moves, pieces, this.position);
     this.moves = moves;
   }
 
+  /* add castling to the array of moves of the king if it's possible*/
   addCastling(moves, pieces, position) {
     const rooks = pieces.filter(p => p.name === 'rook' && p.color === this.color);
-    if (this.alreadyMoved || rooks[0].alreadyMoved && rooks[1].alreadyMoved || this.isChecked) {
+    if (this.alreadyMoved || rooks[0].alreadyMoved && rooks[1].alreadyMoved || this.isChecked) { // can't castle if the king or both rooks had already moved or if the king is in check
       return moves;
     }
     let castling;
@@ -74,14 +73,17 @@ export class King extends Piece {
     let i;
     let piece;
     const directions = [LEFT, RIGHT];
-    for (const [idx, direction] of directions.entries()) {
+    const usedDirections = [];
+    for (let i = 0; i < rooks.length; i++) { // adapts directions in case a rook had been captured
+      usedDirections.push(directions[i]);
+    }
+    for (const [idx, direction] of usedDirections.entries()) {
       if (!rooks[idx].alreadyMoved) {
-
         i = 1;
         posToCheck = [position[0] + i * direction.x, position[1]];
         piece = this.isOccupied(pieces, posToCheck);
         castling = false;
-        while ((!piece || piece.id === rooks[idx].id) && (!this.isCheck(posToCheck, pieces) || i > 2)) { 
+        while ((!piece || piece.id === rooks[idx].id) && (!this.isCheck(posToCheck, pieces) || i > 2)) {
           if (piece) { // if it reach the rook castle is possible
             castling = true;
             break;
@@ -98,23 +100,23 @@ export class King extends Piece {
     return moves;
   }
 
+  /* prevents the king from going to a square where it will be in check*/
   isCheck(position, pieces) {
-    if (this.isKnightOrPawnCheck(pieces, position, 'knight') || this.isKnightOrPawnCheck(pieces, position, 'pawn')) {
+    if (this.isKnightOrPawnCheck(pieces, position)) {
       return true;
     }
-    const directions = this.directions
     let i;
     let posToCheck;
     let piece;
-    for (const direction of directions) {
+    for (const direction of this.directions) {
       i = 1;
       posToCheck = [position[0] + i * direction.x, position[1] + i * direction.y];
       while (this.isInBoard(posToCheck)) {
         piece = this.isOccupied(pieces, posToCheck);
-        if (piece && piece.color !== this.color && piece.hasDirection(direction) && piece.name !== 'pawn' && piece.name !== 'king') {
+        if (piece && piece.color !== this.color && piece.hasDirection(direction) && piece.name !== 'pawn' && (piece.name !== 'king' || piece.name === 'king' && i === 1)) {
           return true;
         }
-        if (piece && (piece.color === this.color && piece.id !== this.id || piece.color !== this.color && !piece.hasDirection(direction))) {
+        if (piece && (piece.color === this.color && piece.id !== this.id || piece.color !== this.color && (!piece.hasDirection(direction) || piece.name === 'king'))) {
           break;
         }
         i++;
@@ -124,7 +126,8 @@ export class King extends Piece {
     return false;
   }
 
-  isKnightOrPawnCheck(pieces, position, pieceName) {
+  /* prevents the king from going to a square where it will be in check by a pawn or a knight*/
+  isKnightOrPawnCheck(pieces, position) {
     let posToCheck;
     let piece;
     const pawnDirections = this.color === 'white' ? [UP_LEFT, UP_RIGHT] : [DOWN_LEFT, DOWN_RIGHT];
@@ -138,17 +141,21 @@ export class King extends Piece {
       KNIGHT_LEFT_UP,
       KNIGHT_LEFT_DOWN
     ];
-    const directions = pieceName === 'pawn' ? pawnDirections : knightDirections;
-    for (const direction of directions) {
-      posToCheck = [position[0] + direction.x, position[1] + direction.y];
-      piece = this.isOccupied(pieces, posToCheck);
-      if (piece && piece.color !== this.color && piece.name === pieceName) {
-        return true;
+    const piecesNames = ['pawn', 'knight'];
+    for (let pieceName of piecesNames) {
+      const directions = pieceName === 'pawn' ? pawnDirections : knightDirections;
+      for (const direction of directions) {
+        posToCheck = [position[0] + direction.x, position[1] + direction.y];
+        piece = this.isOccupied(pieces, posToCheck);
+        if (piece && piece.color !== this.color && piece.name === pieceName) {
+          return true;
+        }
       }
     }
     return false;
   }
 
+  /* puts the king in check and set the squares from where the check can be blocked */
   check(direction, pieces, checkingPiece) {
     this.isChecked = true;
     this.checkingPieces = checkingPiece;

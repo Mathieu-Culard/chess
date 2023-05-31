@@ -8,14 +8,6 @@ import {
   UP_RIGHT,
   DOWN_LEFT,
   DOWN_RIGHT,
-  KNIGHT_UP_LEFT,
-  KNIGHT_UP_RIGHT,
-  KNIGHT_DOWN_LEFT,
-  KNIGHT_DOWN_RIGHT,
-  KNIGHT_RIGHT_UP,
-  KNIGHT_RIGHT_DOWN,
-  KNIGHT_LEFT_UP,
-  KNIGHT_LEFT_DOWN
 } from '../Utils/directions.js';
 
 
@@ -62,17 +54,14 @@ export class Piece {
 
 
   /* 
-    replaces the position of the mouved piece by the passed coordinates if these coordinates are in the Array of possible moves for this piece 
+    replaces the position of the mouved piece by the passed coordinates if these coordinates are in the Array of possible moves for this piece, return true if it the case, false otherwise
   */
   move(coords, possibleMoves) {
     const pos = coords.split('');
     if (!possibleMoves.some(el => JSON.stringify(el) === JSON.stringify(pos.map(coord => parseInt(coord, 10))))) {
       return false;
     }
-
-    const prevPos = this.position;
-    this.position = pos;
-    this.#HTMLElement.classList.replace(this.HTMLElement.classList[3], `square-${this.position[0]}${this.position[1]}`);
+    this.changePosition(pos);
     if ((this.name === 'pawn' || this.name === 'king' || this.name === 'rook') && !this.alreadyMoved) {
       this.alreadyMoved = true;
     }
@@ -88,17 +77,31 @@ export class Piece {
     if (!possibleMoves.some(el => JSON.stringify(el) === JSON.stringify(pos))) { //prevent a piece to capture itself
       return false;
     }
-    //remove piece
-    pieceToRemove.HTMLElement.remove()
-    //place piece
-    this.#HTMLElement.classList.replace(this.#HTMLElement.classList[3], pieceToRemove.HTMLElement.classList[3]);
-    const prevPos = this.position;
-    this.setPosition(pos);
+    this.changePosition(pos);
     if ((this.name === 'pawn' || this.name === 'king' || this.name === 'rook') && !this.alreadyMoved) {
       this.alreadyMoved = true;
     }
-    game.pieces = game.pieces.filter(el => el !== pieceToRemove);// remove captured piece from the ingame pieces array
+    this.removePiece(game,pieceToRemove);
     return true;
+  }
+
+  captureEnPassant(coords, game) {
+    const pos = coords.split('');
+    const posToCheck = this.color === 'white' ? [parseInt(pos[0], 10), parseInt(pos[1], 10) - 1] : [parseInt(pos[0], 10), parseInt(pos[1], 10) + 1];
+    const pawnToRemove = this.isOccupied(game.pieces, posToCheck);
+    this.changePosition(pos);
+    this.removePiece(game,pawnToRemove);
+    return true;
+  }
+
+  changePosition(position) {
+    this.position = position;
+    this.#HTMLElement.classList.replace(this.HTMLElement.classList[3], `square-${this.position[0]}${this.position[1]}`);
+  }
+
+  removePiece(game, pieceToRemove) {
+    pieceToRemove.HTMLElement.remove();
+    game.pieces= game.pieces.filter(el => el !== pieceToRemove);
   }
 
   /* 
@@ -112,6 +115,8 @@ export class Piece {
     return false;
   }
 
+
+  /* check if a piece is pinned in a given direction*/
   checkPin(direction, pieces) {
     const position = this.position;
     let i = 1;
@@ -135,7 +140,11 @@ export class Piece {
     return false;
   }
 
-  getInteractingPieces(pieces, position) {
+  /* 
+  detect connected pieces of the previous and the new position of the moved piece.
+  looks in all direction from the previous position and the new position of the moved piece in order to detect the linked pieces.
+  */
+  getInteractingPieces(pieces, prevPosition) {
     const directions = [
       UP,
       DOWN,
@@ -151,25 +160,27 @@ export class Piece {
     let posToCheck;
     let piecesToUpdate = new Set();
     piecesToUpdate.add(this);
-    const positions = [position, this.position];
+    const positions = [prevPosition, this.position];
     for (const [posIndex, pos] of positions.entries()) {
       for (const direction of directions) {
         i = 1;
         posToCheck = [pos[0] + i * direction.x, pos[1] + i * direction.y];
         while (this.isInBoard(posToCheck)) {
           piece = this.isOccupied(pieces, posToCheck);
-
           if (piece && piece.color === this.color) {
-            if (piece.hasDirection(direction) && (piece.name === 'rook' || piece.name === 'bishop' || piece.name === 'queen')) {
+            if (piece.hasDirection(direction) && (piece.name === 'rook' || piece.name === 'bishop' || piece.name === 'queen') && posIndex === 0) {
+              // if a piece of the same color is linked to the previous position of the moved piece, add it to the set of pieces to update in order to check for discover check or pin.
               piecesToUpdate.add(piece);
             }
-            if (Object.keys(piece.pinDirection).length !== 0 && Math.abs(piece.pinDirection.x) === Math.abs(direction.x) && Math.abs(piece.pinDirection.y) === Math.abs(direction.y)) {
+            if (Object.keys(piece.pinDirection).length !== 0 && Math.abs(piece.pinDirection.x) === Math.abs(direction.x) && Math.abs(piece.pinDirection.y) === Math.abs(direction.y) && posIndex === 1) {
+              // if a piece of the same color of the moved piece is pin and the moved piece comes between its king and the pinned piece or between the pinned piece and the ennemy piece that does the pin, unpin the pinned piece.
               piece.unpin();
             }
             break;
           }
           if (piece && piece.color !== this.color) {
-            if (Object.keys(piece.pinDirection).length !== 0 && piece.pinDirection.x === direction.x && piece.pinDirection.y === direction.y && (!this.hasDirection(direction) || posIndex === 0)) {
+            if (Object.keys(piece.pinDirection).length !== 0 && piece.pinDirection.x === direction.x && piece.pinDirection.y === direction.y && (!this.hasDirection(direction) || this.name === 'pawn' || posIndex === 0)) {
+              // if a pinned ennemy piece is met and the pin direction is the same as the direction that is currently checked, unpin the piece if the moved piece can't pin it or if the moved piece is the piece that does the pin.
               piece.unpin();
             }
             break;
@@ -182,12 +193,13 @@ export class Piece {
     return piecesToUpdate;
   }
 
+  /* if the king is in check, prevent the pieces to move to a square that doesn't block the check*/
   isMoveValid(king, position) {
-    const blockingSquares = king.blockingSquares;
-    if (blockingSquares.length === 0) {
+    // const blockingSquares = king.blockingSquares;
+    if (king.blockingSquares.length === 0) {
       return true;
     }
-    for (const square of blockingSquares) {
+    for (const square of king.blockingSquares) {
       if (square[0] === position[0] && square[1] === position[1]) {
         return true;
       }
@@ -195,6 +207,7 @@ export class Piece {
     return false;
   }
 
+  /* return true if a piece can move in certain direction provided in arguments*/
   hasDirection(direction) {
     for (const pieceDirection of this.directions) {
       if (direction.x === pieceDirection.x && direction.y === pieceDirection.y) {
@@ -208,6 +221,7 @@ export class Piece {
     return posToCheck[0] > 0 && posToCheck[0] <= 8 && posToCheck[1] > 0 && posToCheck[1] <= 8;
   }
 
+  /* prevents a pinned piece to move on a different direction that the direction in which it is pinned*/
   adaptDirections() {
     const adaptedDirections = [];
     const pinDirection = this.pinDirection;
@@ -245,10 +259,6 @@ export class Piece {
 
   get HTMLElement() {
     return this.#HTMLElement;
-  }
-
-  setPosition(newPos) {
-    this.#position = newPos.map(coord => parseInt(coord, 10));
   }
 
   get color() {

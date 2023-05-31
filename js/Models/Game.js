@@ -1,4 +1,4 @@
-import { dragstart, dragend, dragover, drop } from "../Utils/events.js";
+import { dragstart, dragend, dragover, drop, click } from "../Utils/events.js";
 import { Pawn } from "./Pawn.js";
 import { Rook } from './Rook.js';
 import { Bishop } from "./Bishop.js";
@@ -42,7 +42,6 @@ export class Game {
     }
   }
 
-
   initPieces() {
     const pieces = [...Pawn.initPawns(this), ...Rook.initRooks(this), ...Bishop.initBishops(this), ...Knight.initKnights(this), ...Queen.initQueens(this), ...King.initKings(this)];
     pieces.forEach(piece => piece.calculateMoves(pieces, piece.color === 'white' ? this.getKing('white') : this.getKing('black'), piece.color === 'white' ? this.getKing('black') : this.getKing('white')));
@@ -55,6 +54,7 @@ export class Game {
     }
   }
 
+  /* represent a turn, pieceId is the id of the moved piece and squareId the id of it's arrival square */
   play(pieceId, squareId) {
     const targetSquare = document.getElementById(squareId); // get the id of the arrival square
     const piece = this.getPiece(pieceId); // gets the mouved piece instance by the id of its dom element
@@ -64,30 +64,72 @@ export class Game {
     let moved;
     let prevPos = piece.position;
     if (piece.color === this.turn) {
-      if (pieceId === king.id && Math.abs(piece.position[0] - squareId.slice(0, 1)) === 2) {
-        moved = piece.move(squareId, moves);
+      if (pieceId === king.id && Math.abs(piece.position[0] - squareId.slice(0, 1)) === 2) { // if the king moves two squares horizontally
+        moved = piece.move(squareId, moves); //move the king first
         if (moved) {
-          this.handleCastling(king, ennemyKing);
+          this.handleCastling(king, ennemyKing); // then handle the rook movement
         }
       } else if (targetSquare.classList.contains('piece')) { // if the arrival square contains a piece, check if the capture is valid and update the in game pieces array
         moved = piece.capture(this.getPiece(squareId), moves, this);
+      } else if (piece.name === 'pawn' && Math.abs(piece.position[0] - squareId.split('')[0]) === 1) {
+        moved = piece.captureEnPassant(squareId,this);
       } else {
         moved = piece.move(squareId, moves);
       }
     }
     if (moved) {
-      const piecesToUpdate = piece.getInteractingPieces(this.pieces, prevPos);
-      piecesToUpdate.forEach(piece => piece.calculateMoves(this.pieces, king, ennemyKing));
-      this.changeTurn();
-      king.resetCheck();
-      this.getPiecesByColor(this.turn).forEach(piece => piece.calculateMoves(this.pieces, ennemyKing, king));
-      console.log('--------------------------------TURN-----------------------------------');
+      if (piece.name === 'pawn' && piece.checkPromotion()) { // if a pawn reach the other side of the board it has to promote before processing to next turn 
+        this.displayPromotion(piece, prevPos);
+      } else {
+        this.proceedToNextTurn(piece, prevPos);
+      }
     }
   }
+
+  /* 
+  piece is the piece that just been moved and prevPos its previous position 
+  */
+  proceedToNextTurn(piece, prevPos) {
+    const king = this.getKing(piece.color);
+    const ennemyKing = this.getKing(piece.color === 'white' ? 'black' : 'white');
+    const piecesToUpdate = piece.getInteractingPieces(this.pieces, prevPos);
+    piecesToUpdate.forEach(p => p.calculateMoves(this.pieces, king, ennemyKing));
+    if (piece.name === 'pawn' && Math.abs(prevPos[1] - piece.position[1]) === 2) {
+      piece.enPassant = true;
+    }
+    this.changeTurn();
+    king.resetCheck();
+    this.getPiecesByColor(this.turn).forEach(piece => piece.calculateMoves(this.pieces, ennemyKing, king));
+    if (ennemyKing.isChecked && this.checkMat(ennemyKing)) {
+      this.endGame();
+    }
+    console.log('--------------------------------TURN-----------------------------------');
+  }
+
+  /* if a king is in check and no pieces can move the game is over*/
+  checkMat(king) {
+    const pieces = this.getPiecesByColor(this.turn);
+    for (const piece of pieces) {
+      if (piece.moves.length !== 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /* displays a text to the player that tells him if he has won or lost*/
+  endGame() {
+    this.pieces.forEach(piece => piece.moves = []);
+    const endGameDiv = document.getElementById('end-game');
+    endGameDiv.style.display = 'flex';
+    endGameDiv.innerHTML = `<p>${this.turn === 'white' ? 'DEFEAT' : 'VICTORY'}<p>`
+  }
+
 
   handleCastling(king, ennemyKing) {
     let rookId;
     let targetSquare;
+    // get the id of the rook that needs to move and it's arrival square depending on the king color and position.
     if (king.color === 'white') {
       rookId = king.position[0] === 7 ? 1 : 0;
       targetSquare = rookId === 1 ? '61' : '41';
@@ -97,9 +139,33 @@ export class Game {
     }
     const rook = this.getPiece(`rook-${rookId}`);
     const position = rook.position;
-    const oui = rook.move(targetSquare, rook.moves);
+    rook.move(targetSquare, rook.moves);
     const piecesToUpdate = rook.getInteractingPieces(this.pieces, position);
     piecesToUpdate.forEach(piece => piece.calculateMoves(this.pieces, king, ennemyKing));
+  }
+
+
+  /* displays a div that allow the player to promote a pawn*/
+  displayPromotion(pawn, prevPos) {
+    const promotionDiv = document.getElementById('promotion');
+    const promotionItems = document.querySelectorAll('.promotion-item');
+    const promotedTo = ['queen', 'rook', 'bishop', 'knight'];
+    promotionItems.forEach((el, i) => {
+      el.style.backgroundImage = `url('assets/img/${pawn.color}-${promotedTo[i]}.png')`;
+      el.dataset.name = promotedTo[i];
+      el.onclick = (e) => click(e, pawn, this, prevPos);
+    });
+    // set the correct position for the div
+    promotionDiv.style.display = 'flex';
+    const left = 12.5 * (pawn.position[0] - 1) - 1;
+    promotionDiv.style.left = `${left}%`;
+    if (pawn.color === 'black') {
+      promotionDiv.style.bottom = '0';
+      promotionDiv.style.top = '';
+    } else {
+      promotionDiv.style.bottom = '';
+      promotionDiv.style.top = '0';
+    }
   }
 
   get chessBoard() {
@@ -130,19 +196,6 @@ export class Game {
   }
   changeTurn() {
     this.#turn = this.#turn === 'white' ? 'black' : 'white';
-  }
-
-  setMoves(piece, type, prevPos) {
-    let mouvName;
-    const to = String.fromCharCode('a'.charCodeAt(0) + piece.getPosition()[0] - 1);
-    if (type === 'capture' && piece.getName() === 'pawn') {
-      const from = String.fromCharCode('a'.charCodeAt(0) + prevPos[0] - 1);
-      mouvName = `${from}x${to}${piece.getPosition()[1]}`;
-    } else {
-      const pieceName = piece.getName() === 'knight' ? piece.getName().slice(1, 2) : piece.getName().slice(0, 1); // make the difference between king and knight
-      mouvName = type === 'capture' ? `${pieceName.toUpperCase()}x${to}${piece.getPosition()[1]}` : `${pieceName === 'p' ? '' : pieceName.toUpperCase()}${to}${piece.getPosition()[1]}`;
-    }
-    this.#moves.push(mouvName);
   }
 
   setKings(kings) {

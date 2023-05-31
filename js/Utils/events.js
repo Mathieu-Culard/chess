@@ -1,5 +1,3 @@
-import { Pawn } from '../Models/Pawn.js';
-import { Game } from '../Models/Game.js';
 
 export const drop = (e, game) => {
   e.preventDefault();
@@ -30,6 +28,8 @@ export const mouseDown = (e, piece, game) => {
     const ids = moves.map(coords => coords.join(''));
     ids.forEach(id => document.getElementById(id).classList.add('highlight'));
   }
+}
 
-
+export const click = (e, pawn, game, prevPos) => {
+  pawn.promote(e,game,prevPos);
 }
